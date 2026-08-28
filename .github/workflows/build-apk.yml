@@ -28,6 +28,28 @@ jobs:
           sed -i 's/androidx.lifecycle:lifecycle-runtime-ktx:2.11.0/androidx.lifecycle:lifecycle-runtime-ktx:2.10.0/' native_build/MiControlFinanciero/app/build.gradle.kts
           sed -i 's/androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0/androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0/' native_build/MiControlFinanciero/app/build.gradle.kts
           sed -i 's/androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0/androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/' native_build/MiControlFinanciero/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('native_build/MiControlFinanciero/app/src/main/java/com/johnnyescobar/micontrolfinanciero')
+
+          repo = root / 'data/FinanceRepository.kt'
+          text = repo.read_text()
+          text = text.replace('arrayOf(tx.amountCents, tx.cardId)', 'arrayOf<Any?>(tx.amountCents, tx.cardId)')
+          text = text.replace('arrayOf(tx.amountCents, tx.debtId)', 'arrayOf<Any?>(tx.amountCents, tx.debtId)')
+          text = text.replace('arrayOf(tx.amountCents, it)', 'arrayOf<Any?>(tx.amountCents, it)')
+          repo.write_text(text)
+
+          screens = root / 'ui/Screens.kt'
+          text = screens.read_text()
+          text = text.replace('import androidx.compose.ui.text.input.KeyboardOptions', 'import androidx.compose.foundation.text.KeyboardOptions')
+          text = text.replace('items(state.budgets, key = { it.categoryId })', 'items(state.budgets, key = { it.budget.categoryId })')
+          screens.write_text(text)
+
+          app = root / 'ui/FinanceApp.kt'
+          text = app.read_text()
+          text = text.replace('@Composable\nfun FinanceApp(', '@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun FinanceApp(', 1)
+          app.write_text(text)
+          PY
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
