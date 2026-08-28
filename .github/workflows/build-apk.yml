@@ -43,6 +43,7 @@ jobs:
           gradle-version: "9.5.0"
 
       - name: Test and build debug APK
+        id: gradle_build
         working-directory: native_build/MiControlFinanciero
         shell: bash
         run: |
@@ -57,6 +58,14 @@ jobs:
             exit $status
           fi
           tail -50 build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: native_build/MiControlFinanciero/build.log
+          if-no-files-found: warn
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
