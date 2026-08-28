@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reconstruct native source
+        shell: bash
+        run: |
+          cat native_package/part00.bin native_package/part01.bin native_package/part02.bin native_package/part03.bin native_package/part04.bin native_package/part05.bin native_package/part06.bin native_package/part07.bin native_package/part08.bin native_package/part09.bin native_package/part10.bin native_package/part11a.bin native_package/part11b.bin native_package/part12.bin > source.zip
+          echo "beea2f558d8dd0fcd17df231314d62a3f5f8edd1445ca6fcb79d54f8520fe151  source.zip" | sha256sum -c -
+          unzip -tq source.zip
+          rm -rf native_build
+          mkdir native_build
+          unzip -q source.zip -d native_build
+          test -f native_build/MiControlFinanciero/app/build.gradle.kts
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.5.0"
+
+      - name: Test and build debug APK
+        working-directory: native_build/MiControlFinanciero
+        shell: bash
+        run: |
+          set +e
+          gradle clean test assembleDebug --stacktrace > build.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            echo "===== GRADLE ERROR SUMMARY ====="
+            grep -E -i "(^e:|error:|FAILURE:|What went wrong|Could not|Unresolved reference|Compilation error|Exception|BUILD FAILED)" build.log | tail -150 || true
+            echo "===== LAST 150 LINES ====="
+            tail -150 build.log
+            exit $status
+          fi
+          tail -50 build.log
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiControlFinanciero-debug-apk
+          path: native_build/MiControlFinanciero/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
